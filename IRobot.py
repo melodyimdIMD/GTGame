@@ -220,4 +220,4 @@ if __name__ == "__main__":
     print '!!!!!!!!!!'
     bot = GtalkRobot()
     bot.setState('available', "ljqRobot")
-    bot.start("livasu517@gmail.com", "rianeihualan")
+    bot.start("livasu517@gmail.com", "passsword")
