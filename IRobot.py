@@ -1,57 +1,14 @@
-﻿#!/usr/bin/python
 # -*- coding: utf-8 -*-
+import sys
+import time
 
-# PyGtalkRobot: A simple jabber/xmpp bot framework using Regular Expression Pattern as command controller
-# Copyright (c) 2008 Demiao Lin <ldmiao@gmail.com>
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-# Homepage: http://code.google.com/p/pygtalkrobot/
-#
+from Robot import GtalkRobot
 
-import sys, traceback
-import xmpp
-import urllib
-import re
-import inspect
+#########################################################################################
 
-"""A simple jabber/xmpp bot framework
-
-This is a simple jabber/xmpp bot framework using Regular Expression Pattern as command controller.
-Copyright (c) 2008 Demiao Lin <ldmiao@gmail.com>
-
-To use, subclass the "GtalkRobot" class and implement "command_NUM_" methods
-(or whatever you set the command_prefix to), like sampleRobot.py.
-
-"""
-
-def print_info(obj):
-    for (name, value) in inspect.getmembers(obj):
-        print '%s: %r' % (name, value)
-
-class GtalkRobot:
-
-    ########################################################################################################################
-    conn = None
-    show = "available"
-    status = "ljqRobot"
-    commands = None
-    command_prefix = 'command_'
-    GO_TO_NEXT_COMMAND = 'go_to_next'
-    ########################################################################################################################
+class SampleBot(GtalkRobot):
         
-    #Pattern Tips:
+    #Regular Expression Pattern Tips:
     # I or IGNORECASE <=> (?i)      case insensitive matching
     # L or LOCALE <=> (?L)          make \w, \W, \b, \B dependent on the current locale
     # M or MULTILINE <=> (?m)       matches every new line and not only start/end of the whole string
@@ -59,165 +16,53 @@ class GtalkRobot:
     # U or UNICODE <=> (?u)         Make \w, \W, \b, and \B dependent on the Unicode character properties database.
     # X or VERBOSE <=> (?x)         Ignores whitespace outside character sets
     
-    #This method is the default action for all pattern in lowest priviledge
-    def command_999_default(self, user, message, args):
-        """.*?(?s)(?m)"""
-        self.replyMessage(user, message)
+    #"command_" is the command prefix, "001" is the priviledge num, "setState" is the method name.
+    #This method is used to change the state and status text of the bot.
+    def command_001_setState(self, user, message, args):
+        #the __doc__ of the function is the Regular Expression of this command, if matched, this command method will be called. 
+        #The parameter "args" is a list, which will hold the matched string in parenthesis of Regular Expression.
+        '''(available|online|on|busy|dnd|away|idle|out|off|xa)( +(.*))?$(?i)'''
+        show = args[0]
+        status = args[1]
+        jid = user.getStripped()
 
-    ########################################################################################################################
-    #These following methods can be only used after bot has been successfully started
+        # Verify if the user is the Administrator of this bot
+        if jid == 'ldmiao@gmail.com':
+            print jid, " ---> ",bot.getResources(jid), bot.getShow(jid), bot.getStatus(jid)
+            self.setState(show, status)
+            self.replyMessage(user, "State settings changed！")
 
-    #show : xa,away---away   dnd---busy   available--online
-    def setState(self, show, status_text):
-        if show:
-            show = show.lower()
-        if show == "online" or show == "on" or show == "available":
-            show = "available"
-        elif show == "busy" or show == "dnd":
-            show = "dnd"
-        elif show == "away" or show == "idle" or show == "off" or show == "out" or show == "xa":
-            show = "xa"
-        else:
-            show = "available"
+    #This method is used to send email for users.
+    def command_002_SendEmail(self, user, message, args):
+        #email ldmiao@gmail.com hello dmeiao, nice to meet you, bla bla ...
+        '''[email|mail|em|m]\s+(.*?@.+?)\s+(.*?),\s*(.*?)(?i)'''
+        email_addr = args[0]
+        subject = args[1]
+        body = args[2]
+        #call_send_email_function(email_addr, subject,  body)
         
-        self.show = show
-
-        if status_text:
-            self.status = status_text
-        
-        if self.conn:
-            pres=xmpp.Presence(priority=5, show=self.show, status=self.status)
-            self.conn.send(pres)
-
-    def getState(self):
-        return self.show, self.status
-
-    def replyMessage(self, user, message):
-        self.conn.send(xmpp.Message(user, message))
-
-    def getRoster(self):
-        return self.conn.getRoster()
-
-    def getResources(self, jid):
-        roster = self.getRoster()
-        if roster:
-            return roster.getResources(jid)
-
-    def getShow(self, jid):
-        roster = self.getRoster()
-        if roster:
-            return roster.getShow(jid)
-
-    def getStatus(self, jid):
-        roster = self.getRoster()
-        if roster:
-            return roster.getStatus(jid)
-
-    def authorize(self, jid):
-        """ Authorise JID 'jid'. Works only if these JID requested auth previously. """
-        self.getRoster().Authorize(jid)
+        self.replyMessage(user, "\nEmail sent to "+ email_addr +" at: "+time.strftime("%Y-%m-%d %a %H:%M:%S", time.gmtime()))
     
-    ########################################################################################################################
-    def initCommands(self):
-        if self.commands:
-            self.commands.clear()
-        else:
-            self.commands = list()
-        for (name, value) in inspect.getmembers(self):
-            if inspect.ismethod(value) and name.startswith(self.command_prefix):
-                self.commands.append((value.__doc__, value))
-        #print self.commands
-
-    def controller(self, conn, message):
-        text = message.getBody()
-        user = message.getFrom()
-        if text:
-            text = text.encode('utf-8', 'ignore')
-            if not self.commands:
-                self.initCommands()
-            for (pattern, bounded_method) in self.commands:
-                match_obj = re.match(pattern, text)
-                if(match_obj):
-                    try:
-                        return_value = bounded_method(user, text, match_obj.groups())
-                        if return_value == self.GO_TO_NEXT_COMMAND:
-                            pass
-                        else:
-                            break
-                    except:
-                        print_info(sys.exc_info())
-                        self.replyMessage(user, traceback.format_exc())
-
-    def presenceHandler(self, conn, presence):
-        #print presence
-        #print_info(presence)
-        if presence:
-            print "-"*100
-            print presence.getFrom(), ",", presence.getFrom().getResource(), ",", presence.getType(), ",", presence.getStatus(), ",", presence.getShow()
-            print "~"*100
-            if presence.getType()=='subscribe':
-                jid = presence.getFrom().getStripped()
-                self.authorize(jid)
-
-    def StepOn(self):
-        try:
-            self.conn.Process(1)
-        except KeyboardInterrupt: 
-            return 0
-        return 1
-
-    def GoOn(self):
-        while self.StepOn(): pass
-
-    ########################################################################################################################
-    # "debug" parameter specifies the debug IDs that will go into debug output.
-    # You can either specifiy an "include" or "exclude" list. The latter is done via adding "always" pseudo-ID to the list.
-    # Full list: ['nodebuilder', 'dispatcher', 'gen_auth', 'SASL_auth', 'bind', 'socket', 'CONNECTproxy', 'TLS', 'roster', 'browser', 'ibb'].
-    def __init__(self, server_host="talk.google.com", server_port=5223, debug=[]):
-        self.debug = debug
-        self.server_host = server_host
-        self.server_port = server_port
-
-    def start(self, gmail_account, password):
+    #This method is used to response users.
+    def command_100_default(self, user, message, args):
+        '''.*?(?s)(?m)'''
+        self.replyMessage(user, time.strftime("%Y-%m-%d %a %H:%M:%S", time.gmtime()))
         
+    def command_010_game(self, user, message, args):
+    #the __doc__ of the function is the Regular Expression of this command, if matched, this command method will be called. 
+    #The parameter "args" is a list, which will hold the matched string in parenthesis of Regular Expression.
+        '''(/game)( +(.*))?$(?i)'''
+        self.mode = 'game'
+        text = "hello ,let`s paly a game"
+        self.replyMessage(user, text)
         
-        #user, server, password = jid.getNode(), jid.getDomain(), password
-        user, server = gmail_account, "gmail.com"
-        jid = xmpp.JID(user) 
-        self.conn = xmpp.Client(server, debug=self.debug) 
-        conres = self.conn.connect() 
-        #result = self.conn.auth(jid.getNode(), password, "LFY-client")
+    def modeControl(self, user, message, args):
+        if self.mode == 'game':self.command_010_game(user, message, args)
+#         elif self.mode == 'chat':   
         
-        if not conres:
-            print "Unable to connect to server %s!"%server
-            sys.exit(1)
-        if conres<>'tls':
-            print "Warning: unable to estabilish secure connection - TLS failed!"
-        
-        #authres=self.conn.auth(user, password)
-        authres=self.conn.auth(jid.getNode(), password,"LFY-client") 
-        if not authres:
-            print "Unable to authorize on %s - Plsese check your name/password."%server
-            sys.exit(1)
-        if authres<>"sasl":
-            print "Warning: unable to perform SASL auth os %s. Old authentication method used!"%server
-        
-        self.conn.RegisterHandler("message", self.controller)
-        self.conn.RegisterHandler('presence',self.presenceHandler)
-        
-        self.conn.sendInitPresence()
-        
-        self.setState(self.show, self.status)
-        
-        print "Bot started."
-        self.GoOn()
 
-    ########################################################################################################################
-
-
-############################################################################################################################
+#########################################################################################
 if __name__ == "__main__":
-    print '!!!!!!!!!!'
-    bot = GtalkRobot()
-    bot.setState('available', "ljqRobot")
-    bot.start("livasu517@gmail.com", "passsword")
+    bot = SampleBot()
+    bot.setState('available', "Simple Gtalk Robot")
+    bot.start("livasu517@gmail.com", "xxx")
