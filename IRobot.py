@@ -3,6 +3,7 @@ import sys
 import time
 
 from Robot import GtalkRobot
+from dns.rdatatype import NULL
 
 #########################################################################################
 
@@ -44,17 +45,23 @@ class SampleBot(GtalkRobot):
         self.replyMessage(user, "\nEmail sent to "+ email_addr +" at: "+time.strftime("%Y-%m-%d %a %H:%M:%S", time.gmtime()))
     
     #This method is used to response users.
-    def command_100_default(self, user, message, args):
+    def command_100_default(self, user, message, args = NULL):
         '''.*?(?s)(?m)'''
         self.replyMessage(user, time.strftime("%Y-%m-%d %a %H:%M:%S", time.gmtime()))
         
-    def command_010_game(self, user, message, args):
+    def command_010_game(self, user, message, args = NULL):
     #the __doc__ of the function is the Regular Expression of this command, if matched, this command method will be called. 
     #The parameter "args" is a list, which will hold the matched string in parenthesis of Regular Expression.
         '''(/game)( +(.*))?$(?i)'''
-        self.mode = 'game'
-        text = "hello ,let`s paly a game"
-        self.replyMessage(user, text)
+        if self.modeInit == False :
+            self.mode = 'game'
+            text = "你已进入游戏模式，输入/q 或/quit 退出,\n 输入/ready 等待其他玩家准备完毕，即可开始游戏\n"\
+                    + "-----------------------------------------------------------------------------------"
+            self.gameGroup.append(user);
+            self.replyMessage(user, text)
+            self.modeInit = True
+        
+        self.replyMessage(user, "请等待。。。")
         
     def modeControl(self, user, message, args):
         if self.mode == 'game':self.command_010_game(user, message, args)
@@ -64,5 +71,5 @@ class SampleBot(GtalkRobot):
 #########################################################################################
 if __name__ == "__main__":
     bot = SampleBot()
-    bot.setState('available', "Simple Gtalk Robot")
+    bot.setState('available', "ljq`s game room")
     bot.start("livasu517@gmail.com", "xxx")

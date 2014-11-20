@@ -1,4 +1,3 @@
-﻿#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 # PyGtalkRobot: A simple jabber/xmpp bot framework using Regular Expression Pattern as command controller
@@ -25,6 +24,7 @@ import xmpp
 import urllib
 import re
 import inspect
+from _multiprocessing import flags
 
 """A simple jabber/xmpp bot framework
 
@@ -49,6 +49,7 @@ class GtalkRobot:
     commands = None
     command_prefix = 'command_'
     GO_TO_NEXT_COMMAND = 'go_to_next'
+    gameGroup = list()
     ########################################################################################################################
         
     #Pattern Tips:
@@ -88,6 +89,13 @@ class GtalkRobot:
         if self.conn:
             pres=xmpp.Presence(priority=5, show=self.show, status=self.status)
             self.conn.send(pres)
+            
+        self.mode = 'normal'
+        self.modeInit = False
+        self.modeMethod = list() 
+        for (name, value) in inspect.getmembers(self):
+            if name == 'command_100_default': 
+                self.modeMethod.append((self.mode,value))
 
     def getState(self):
         return self.show, self.status
@@ -127,26 +135,68 @@ class GtalkRobot:
             if inspect.ismethod(value) and name.startswith(self.command_prefix):
                 self.commands.append((value.__doc__, value))
         #print self.commands
-
+        
+#     def modeControl_Ljq(self,usrcommand) :
+#         if usrcommand == '/quit' or usrcommand == '/q':
+#             self.mode = 'normal'
+#             self.modeMethod = list()
+#             self.modeMethod.append( inspect.getmembers('command_010_game')) 
+#         elif usrcommand == '/game':self.mode = 'gaming'
+        
+    def modeControl_Ljq(self, usrcommand):       
+        tmp = "command_100_default"        
+        if usrcommand == '/game':
+            self.mode = 'gaming'
+            tmp = "command_010_game"
+        elif usrcommand == '/quit' or usrcommand == '/q':
+            self.mode = 'quit'
+            tmp = "command_100_default"
+            
+        if(self.mode != 'normal'):
+            for (name, value) in inspect.getmembers(self):
+                if name == tmp: 
+                    self.modeMethod.append((self.mode,value))
+            
+            if self.mode == 'quit': 
+                self.mode = 'normal'
+                self.modeInit = False
+                
+                      
     def controller(self, conn, message):
         text = message.getBody()
         user = message.getFrom()
         if text:
             text = text.encode('utf-8', 'ignore')
+            
+            if text[0] == "/":
+                self.modeControl_Ljq(text)
+            for (methodName,IMethod) in self.modeMethod:
+                if methodName == self.mode : break           
+                
             if not self.commands:
                 self.initCommands()
-            for (pattern, bounded_method) in self.commands:
-                match_obj = re.match(pattern, text)
-                if(match_obj):
-                    try:
-                        return_value = bounded_method(user, text, match_obj.groups())
-                        if return_value == self.GO_TO_NEXT_COMMAND:
-                            pass
-                        else:
-                            break
-                    except:
-                        print_info(sys.exc_info())
-                        self.replyMessage(user, traceback.format_exc())
+            
+            try:
+               # match_obj = re.match(pattern, text)
+                return_value = IMethod(user, text)
+                if return_value == self.GO_TO_NEXT_COMMAND:
+                    pass
+            except:
+                print_info(sys.exc_info())
+                self.replyMessage(user, traceback.format_exc())
+                
+#             for (pattern, bounded_method) in self.commands:
+#                 match_obj = re.match(pattern, text)
+#                 if(match_obj):
+#                     try:
+#                         return_value = bounded_method(user, text, match_obj.groups())
+#                         if return_value == self.GO_TO_NEXT_COMMAND:
+#                             pass
+#                         else:
+#                             break
+#                     except:
+#                         print_info(sys.exc_info())
+#                         self.replyMessage(user, traceback.format_exc())
 
     def presenceHandler(self, conn, presence):
         #print presence
