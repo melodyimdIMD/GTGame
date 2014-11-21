@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import sys
 import time
+from Landlords import Players 
+from Landlords import Landlords
 
 from Robot import GtalkRobot
 from dns.rdatatype import NULL
@@ -8,7 +10,8 @@ from dns.rdatatype import NULL
 #########################################################################################
 
 class SampleBot(GtalkRobot):
-        
+    gameGroup = list()
+    game = Landlords()
     #Regular Expression Pattern Tips:
     # I or IGNORECASE <=> (?i)      case insensitive matching
     # L or LOCALE <=> (?L)          make \w, \W, \b, \B dependent on the current locale
@@ -55,16 +58,38 @@ class SampleBot(GtalkRobot):
         '''(/game)( +(.*))?$(?i)'''
         if self.modeInit == False :
             self.mode = 'game'
-            text = "你已进入游戏模式，输入/q 或/quit 退出,\n 输入/ready 等待其他玩家准备完毕，即可开始游戏\n"\
+            bnewGroupmember = True       
+            for i in SampleBot.gameGroup:
+                if user == i:bGroupmember = False    
+            if SampleBot.group == null or bnewGroupmember: 
+                player = Players(user)
+                SampleBot.gameGroup.append(player)
+            totalPlayer = 0   
+            for i in SampleBot.gameGroup:
+                if i : totalPlayer += 1
+            if totalPlayer == 3:
+#                 SampleBot.game.play() 
+                # 输入/ready 等待其他玩家准备完毕，即可开始游戏\n
+            text = "你已进入游戏模式(默认：斗地主)，输入/q 或/quit 退出,\n"\
                     + "-----------------------------------------------------------------------------------"
-            self.gameGroup.append(user);
             self.replyMessage(user, text)
             self.modeInit = True
-        
         self.replyMessage(user, "请等待。。。")
+        
+        
         
     def modeControl(self, user, message, args):
         if self.mode == 'game':self.command_010_game(user, message, args)
+        
+    def findPlayer(self,usr):
+        for player in SampleBot.gameGroup:
+            if usr == player.name:return player
+        return False
+    
+    def __init__(self,game):
+        
+#         SampleBot.game = game
+        return
 #         elif self.mode == 'chat':   
         
 
@@ -72,4 +97,4 @@ class SampleBot(GtalkRobot):
 if __name__ == "__main__":
     bot = SampleBot()
     bot.setState('available', "ljq`s game room")
-    bot.start("livasu517@gmail.com", "xxx")
+    bot.start("livasu517@gmail.com", "rianeihualan")
