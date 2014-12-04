@@ -25,6 +25,7 @@ import urllib
 import re
 import inspect
 from _multiprocessing import flags
+from dns.rdatatype import NULL
 
 """A simple jabber/xmpp bot framework
 
@@ -50,6 +51,7 @@ class GtalkRobot:
     command_prefix = 'command_'
     GO_TO_NEXT_COMMAND = 'go_to_next'
     gameGroup = list()
+    IMethod = NULL
     ########################################################################################################################
         
     #Pattern Tips:
@@ -142,43 +144,19 @@ class GtalkRobot:
 #             self.modeMethod = list()
 #             self.modeMethod.append( inspect.getmembers('command_010_game')) 
 #         elif usrcommand == '/game':self.mode = 'gaming'
-        
-    def modeControl_Ljq(self, usrcommand):       
-        tmp = "command_100_default"        
-        if usrcommand == '/game':
-            self.mode = 'gaming'
-            tmp = "command_010_game"
-        elif usrcommand == '/quit' or usrcommand == '/q':
-            self.mode = 'quit'
-            tmp = "command_100_default"
-            
-        if(self.mode != 'normal'):
-            for (name, value) in inspect.getmembers(self):
-                if name == tmp: 
-                    self.modeMethod.append((self.mode,value))
-            
-            if self.mode == 'quit': 
-                self.mode = 'normal'
-                self.modeInit = False
-                
+
+                   
                       
     def controller(self, conn, message):
         text = message.getBody()
         user = message.getFrom()
         if text:
-            text = text.encode('utf-8', 'ignore')
-            
-            if text[0] == "/":
-                self.modeControl_Ljq(text)
-            for (methodName,IMethod) in self.modeMethod:
-                if methodName == self.mode : break           
-                
+            text = text.encode('utf-8', 'ignore')                  
             if not self.commands:
-                self.initCommands()
-            
+                self.initCommands()   
             try:
                # match_obj = re.match(pattern, text)
-                return_value = IMethod(user, text)
+                return_value = self.IMethod(user, text)
                 if return_value == self.GO_TO_NEXT_COMMAND:
                     pass
             except:
@@ -259,7 +237,14 @@ class GtalkRobot:
         
         self.setState(self.show, self.status)
         
+        for (name, value) in inspect.getmembers(self):
+            if name == 'modeControl': 
+                self.IMethod = value
+                break 
+            
+#                 self.modeMethod.append((self.mode,value))                                
         print "Bot started."
+        
         self.GoOn()
 
     ########################################################################################################################
